@@ -3,12 +3,17 @@ import re
 import socket
 import sys
 
+from termcolor import cprint
+
 def error(message):
-    print(f'[-] {message}')
+    cprint(f'[-] {message}', 'red')
     sys.exit(1)
 
+def info(message):
+    cprint(f'[*] {message}', 'blue')
+
 def success(message):
-    print(f'[+] {message}')
+    cprint(f'[+] {message}', 'green')
 
 def reachable_ip(ip):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,6 +45,13 @@ def check_port(ip, port):
         return errors == 0
 
 if __name__ == '__main__':
+    print('''
+   _____  __   __  _____   _____   ______ _______ _______ _______ _______ __   _
+  |_____]   \_/   |_____] |     | |_____/    |    |______ |       |_____| | \  |
+  |          |    |       |_____| |    \_    |    ______| |_____  |     | |  \_|
+
+    ''')
+
     socket.setdefaulttimeout(1)
 
     parser = argparse.ArgumentParser()
@@ -56,21 +68,20 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-    print()
 
-    check_errors()
+    check_errors(args)
 
-    success(f'Scanning IP ADDRESS: {args.ip}')
+    info(f'Scanning IP ADDRESS: {args.ip}')
 
     if args.last_port is not None:
-        success(f'PORTS to scan: {args.port} - {args.last_port}\n')
+        info(f'PORTS to scan: {args.port} - {args.last_port}\n')
 
         for port in range(args.port, args.last_port + 1):
             if check_port(args.ip, port):
                 success(f'PORT {port}: OPEN')
 
     else:
-        success(f'PORT to scan: {args.port}\n')
+        info(f'PORT to scan: {args.port}\n')
 
         port_open = check_port(args.ip, args.port)
 
