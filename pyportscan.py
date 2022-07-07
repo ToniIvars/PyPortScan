@@ -21,6 +21,19 @@ def reachable_ip(ip):
         s.close()
         return True
 
+def check_errors(args):
+    if not re.match('(\d{1,3}.){3}\d{1,3}', args.ip):
+        error('The IP address is not valid.')
+
+    if args.port < 1 or args.port > 65535:
+        error('The port is not valid.')
+
+    if args.last_port is not None and (args.port >= args.last_port or args.last_port < 1 or args.last_port > 65535):
+        error('The last port is not valid.')
+
+    if not reachable_ip(args.ip):
+        error(f'The IP ADDRESS {args.ip} is not reachable.')
+
 def check_port(ip, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         errors = s.connect_ex((ip, port))
@@ -45,17 +58,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print()
 
-    if not re.match('(\d{1,3}.){3}\d{1,3}', args.ip):
-        error('The IP address is not valid.')
-
-    if args.port < 1 or args.port > 65535:
-        error('The port is not valid.')
-
-    if args.last_port is not None and (args.port >= args.last_port or args.last_port < 1 or args.last_port > 65535):
-        error('The last port is not valid.')
-
-    if not reachable_ip(args.ip):
-        error(f'The IP ADDRESS {args.ip} is not reachable.')
+    check_errors()
 
     success(f'Scanning IP ADDRESS: {args.ip}')
 
