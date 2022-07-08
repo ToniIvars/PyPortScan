@@ -1,4 +1,6 @@
 import argparse
+import math
+from multiprocessing import Process
 import re
 import socket
 import sys
@@ -18,13 +20,16 @@ def success(message):
 def reachable_ip(ip):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    try: s.connect((ip, 80))
+    try:
+        s.connect((ip, 80))
+        return True
 
     except socket.timeout: return False
 
+    except socket.error: return True
+
     finally:
         s.close()
-        return True
 
 def check_errors(args):
     if not re.match('(\d{1,3}.){3}\d{1,3}', args.ip):
@@ -39,10 +44,43 @@ def check_errors(args):
     if not reachable_ip(args.ip):
         error(f'The IP ADDRESS {args.ip} is not reachable.')
 
+    if args.threads < 1:
+        error('The threads cannot be less than 1.')
+
 def check_port(ip, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         errors = s.connect_ex((ip, port))
         return errors == 0
+
+def generate_port_range(first_port, last_port, threads):
+    if threads == 1:
+        yield range(first_port, last_port)
+
+    else:
+        quant = math.ceil((last_port - first_port) / threads)
+        while last_port - first_port > quant:
+            yield range(first_port, first_port + quant)
+            first_port += quant
+
+        yield range(first_port, last_port)
+
+def scan_subrange(ip, port_range):
+    for port in port_range:
+        if check_port(ip, port):
+            success(f'PORT {port}: OPEN')
+
+def scan_ports_range(ip, first_port, last_port, threads):
+    last_port += 1
+    threads = min(last_port - first_port, threads)
+
+    processes = []
+    for port_range in generate_port_range(first_port, last_port, threads):
+        p = Process(target=scan_subrange, args=(ip, port_range))
+        p.start()
+        processes.append(p)
+
+    for p in processes:
+        p.join()
 
 if __name__ == '__main__':
     print('''
@@ -66,6 +104,11 @@ if __name__ == '__main__':
         help='If you want to specify a range of ports to scan, this is the last port to scan.',
         type=int
     )
+    parser.add_argument(
+        '-t', '--threads',
+        help='Threads to use in the scan.',
+        type=int, default=1
+    )
 
     args = parser.parse_args()
 
@@ -76,9 +119,7 @@ if __name__ == '__main__':
     if args.last_port is not None:
         info(f'PORTS to scan: {args.port} - {args.last_port}\n')
 
-        for port in range(args.port, args.last_port + 1):
-            if check_port(args.ip, port):
-                success(f'PORT {port}: OPEN')
+        scan_ports_range(args.ip, args.port, args.last_port, args.threads)
 
     else:
         info(f'PORT to scan: {args.port}\n')
